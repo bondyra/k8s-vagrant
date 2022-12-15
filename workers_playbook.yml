@@ -1,0 +1,127 @@
+- import_playbook: base_playbook.yml
+
+- name: Configure k8s worker node
+  vars_files:
+    - config.json
+  hosts: workers
+  tasks:
+  - name: Upload CA cert
+    copy:
+      src: "{{assets_dir}}/ca.pem"
+      dest: ~/
+  - name: Upload kubelet cert & key
+    copy:
+      src: "{{item}}"
+      dest: ~/
+    with_fileglob: "{{assets_dir}}/{{hostname}}*.pem"
+  - name: Upload kubelet kubeconfig
+    copy:
+      src: "{{assets_dir}}/{{hostname}}.kubeconfig"
+      dest: ~/
+  - name: Upload kube-proxy kubeconfig
+    copy:
+      src: "{{assets_dir}}/kube-proxy.kubeconfig"
+      dest: ~/
+
+  - name: Install OS dependencies
+    become: yes
+    shell: |
+      apt-get update
+      apt-get -y install socat conntrack ipset
+      swapoff -a
+      wget -q --show-progress --https-only --timestamping \
+        https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.21.0/crictl-v1.21.0-linux-amd64.tar.gz \
+        https://github.com/opencontainers/runc/releases/download/v1.0.0-rc93/runc.amd64 \
+        https://github.com/containernetworking/plugins/releases/download/v0.9.1/cni-plugins-linux-amd64-v0.9.1.tgz \
+        https://github.com/containerd/containerd/releases/download/v1.4.4/containerd-1.4.4-linux-amd64.tar.gz \
+        https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl \
+        https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-proxy \
+        https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubelet
+      mkdir -p \
+        /etc/cni/net.d \
+        /opt/cni/bin \
+        /var/lib/kubelet \
+        /var/lib/kube-proxy \
+        /var/lib/kubernetes \
+        /var/run/kubernetes
+      mkdir containerd
+      tar -xvf crictl-v1.21.0-linux-amd64.tar.gz
+      tar -xvf containerd-1.4.4-linux-amd64.tar.gz -C containerd
+      tar -xvf cni-plugins-linux-amd64-v0.9.1.tgz -C /opt/cni/bin/
+      mv runc.amd64 runc
+      chmod +x crictl kubectl kube-proxy kubelet runc 
+      mv crictl kubectl kube-proxy kubelet runc /usr/local/bin/
+      mv containerd/bin/* /bin/
+      mkdir -p /etc/containerd/
+      mv {{hostname}}-key.pem {{hostname}}.pem /var/lib/kubelet/
+      mv {{hostname}}.kubeconfig /var/lib/kubelet/kubeconfig
+      mv ca.pem /var/lib/kubernetes/
+      mv kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
+
+  - name: Upload CNI bridge config template
+    copy:
+      src: "{{assets_dir}}/cni-bridge.conf-template"
+      dest: ~/
+  - name: Render CNI bridge config template
+    become: yes
+    shell: |
+      cat cni-bridge.conf-template | awk '{gsub("POD_CIDR_PLACEHOLDER","{{pod_cidr}}")} 1' > /etc/cni/net.d/10-bridge.conf
+  - name: Upload CNI loopback config
+    become: yes
+    copy:
+      src: "{{assets_dir}}/cni-lo.conf"
+      dest: /etc/cni/net.d/99-loopback.conf
+
+  - name: Upload containerd config
+    become: yes
+    copy:
+      src: "{{assets_dir}}/containerd-config.toml"
+      dest: /etc/containerd/config.toml
+  - name: Upload containerd service
+    become: yes
+    copy:
+      src: "{{assets_dir}}/containerd.service"
+      dest: /etc/systemd/system/containerd.service
+
+  - name: Upload kubelet config template
+    copy:
+      src: "{{assets_dir}}/kubelet-config.yaml-template"
+      dest: ~/
+  - name: Render kubelet config template
+    become: yes
+    shell: |
+      cat kubelet-config.yaml-template | awk '{gsub("POD_CIDR_PLACEHOLDER","{{pod_cidr}}"); gsub("HOSTNAME_PLACEHOLDER","{{hostname}}")} 1' > /var/lib/kubelet/kubelet-config.yaml
+  - name: Upload kubelet service
+    become: yes
+    copy:
+      src: "{{assets_dir}}/kubelet.service"
+      dest: /etc/systemd/system/kubelet.service
+
+  - name: Upload kube proxy config
+    become: yes
+    copy:
+      src: "{{assets_dir}}/kube-proxy-config.yaml"
+      dest: /var/lib/kube-proxy/kube-proxy-config.yaml
+  - name: Upload kube proxy service
+    become: yes
+    copy:
+      src: "{{assets_dir}}/kube-proxy.service"
+      dest: /etc/systemd/system/kube-proxy.service
+
+  - name: Upload route config script
+    copy:
+      src: "{{assets_dir}}/setup_worker_routes.sh"
+      dest: ~/
+  - name: Setup routes
+    become: yes
+    shell: bash setup_worker_routes.sh {{pod_cidr}}
+  - name: Load necessary kernel modules
+    become: yes
+    shell: modprobe br_netfilter
+
+  - name: Start the worker services
+    become: yes
+    shell: |
+      systemctl daemon-reload
+      systemctl enable containerd kubelet kube-proxy
+      systemctl start containerd kubelet kube-proxy

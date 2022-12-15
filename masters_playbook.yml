@@ -1,0 +1,156 @@
+- import_playbook: base_playbook.yml
+
+- name: Configure k8s master node
+  vars_files:
+    - config.json
+  hosts: masters
+  tasks:
+  - name: Upload CA cert & key
+    copy:
+      src: "{{item}}"
+      dest: ~/
+    with_fileglob: "{{assets_dir}}/ca*.pem"
+  - name: Upload API server cert & key
+    copy:
+      src: "{{item}}"
+      dest: ~/
+    with_fileglob: "{{assets_dir}}/kubernetes*.pem"
+  - name: Upload SA key pair
+    copy:
+      src: "{{item}}"
+      dest: ~/
+    with_fileglob: "{{assets_dir}}/service-account*.pem"
+  - name: Upload admin kubeconfig
+    copy:
+      src: "{{assets_dir}}/admin.kubeconfig"
+      dest: ~/
+  - name: Upload controller manager kubeconfig
+    copy:
+      src: "{{assets_dir}}/kube-controller-manager.kubeconfig"
+      dest: ~/
+  - name: Upload scheduler kubeconfig
+    copy:
+      src: "{{assets_dir}}/kube-scheduler.kubeconfig"
+      dest: ~/
+  - name: Upload encryption config
+    copy:
+      src: "{{assets_dir}}/encryption-config.yaml"
+      dest: ~/
+
+# BOOTSTRAP ETCD
+
+  - name: Download and install etcd binaries
+    become: yes
+    shell: |
+      wget -q --show-progress --https-only --timestamping "https://github.com/etcd-io/etcd/releases/download/v3.4.15/etcd-v3.4.15-linux-amd64.tar.gz"
+      tar -xvf etcd-v3.4.15-linux-amd64.tar.gz
+      mv etcd-v3.4.15-linux-amd64/etcd* /usr/local/bin/
+  - name: Configure etcd server
+    become: yes
+    shell: |
+      mkdir -p /etc/etcd /var/lib/etcd
+      chmod 700 /var/lib/etcd
+      cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
+  - name: Upload etcd service template
+    copy:
+      src: "{{assets_dir}}/etcd.service-template"
+      dest: ~/
+  - name: Render etcd service
+    become: yes
+    shell: |
+      cat etcd.service-template | awk '{gsub("IP_PLACEHOLDER","{{ip_address}}"); gsub("HOSTNAME_PLACEHOLDER","{{hostname}}")} 1' > /etc/systemd/system/etcd.service
+  - name: Start etcd server
+    become: yes
+    shell: |
+      systemctl daemon-reload
+      systemctl enable etcd
+      systemctl start etcd
+  - name: Pause for 10 seconds to start things up
+    pause:
+      seconds: 10
+
+# BOOTSTRAP K8S
+
+  - name: Download and install k8s controller binaries
+    become: yes
+    shell: |
+      wget -q --show-progress --https-only --timestamping \
+        "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-apiserver" \
+        "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-controller-manager" \
+        "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kube-scheduler" \
+        "https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl"
+      chmod +x kube-apiserver kube-controller-manager kube-scheduler kubectl
+      mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
+  - name: Prepare file & directory structure
+    become: yes
+    shell: |
+      mkdir -p /var/lib/kubernetes/
+      mv ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem service-account-key.pem service-account.pem encryption-config.yaml /var/lib/kubernetes/
+      mv kube-controller-manager.kubeconfig /var/lib/kubernetes/
+      mkdir -p /etc/kubernetes/config
+      mv kube-scheduler.kubeconfig /var/lib/kubernetes/
+
+  - name: Upload api server service template
+    copy:
+      src: "{{assets_dir}}/kube-apiserver.service-template"
+      dest: ~/
+  - name: Render api server service template
+    become: yes
+    shell: |
+      cat kube-apiserver.service-template | awk '{gsub("IP_PLACEHOLDER","{{ip_address}}")} 1' > /etc/systemd/system/kube-apiserver.service
+
+  - name: Upload controller manager service
+    become: yes
+    copy:
+      src: "{{assets_dir}}/kube-controller-manager.service"
+      dest: /etc/systemd/system/kube-controller-manager.service
+
+  - name: Upload scheduler config
+    become: yes
+    copy:
+      src: "{{assets_dir}}/kube-scheduler.yaml"
+      dest: /etc/kubernetes/config/kube-scheduler.yaml
+  - name: Upload scheduler service
+    become: yes
+    copy:
+      src: "{{assets_dir}}/kube-scheduler.service"
+      dest: /etc/systemd/system/kube-scheduler.service
+
+  - name: Start controller services
+    become: yes
+    shell: |
+      systemctl daemon-reload
+      systemctl enable kube-apiserver kube-controller-manager kube-scheduler
+      systemctl start kube-apiserver kube-controller-manager kube-scheduler
+  - name: Pause for 10 seconds to start things up
+    pause:
+      seconds: 10
+
+  - name: Upload kube-apiserver-to-kubelet yaml
+    copy:
+      src: "{{assets_dir}}/kube-apiserver-to-kubelet.yaml"
+      dest: ~/
+  - name: Create the system:kube-apiserver-to-kubelet ClusterRole with permissions to access the Kubelet API and perform most common tasks associated with managing pods
+    run_once: true
+    become: yes
+    shell: |
+      kubectl apply --kubeconfig admin.kubeconfig -f kube-apiserver-to-kubelet.yaml
+    register: result  # early applies might occasionally fail
+    until: result.rc == 0
+    retries: 3
+    delay: 10
+
+
+  - name: Upload CoreDNS yaml
+    copy:
+      src: "{{assets_dir}}/coredns.yaml"
+      dest: ~/
+  - name: Install CoreDNS
+    run_once: true
+    become: yes
+    shell: |
+      kubectl apply --kubeconfig admin.kubeconfig  -f coredns.yaml
+    register: result  # early applies might occasionally fail
+    until: result.rc == 0
+    retries: 3
+    delay: 10

@@ -1,0 +1,32 @@
+- import_playbook: base_playbook.yml
+
+- name: Configure k8s api server proxy
+  vars_files:
+    - config.json
+  hosts: proxy
+  tasks:
+  - name: APT
+    become: yes
+    apt:
+      update_cache: true
+      name: nginx
+      state: present
+  - name: Prepare directories
+    become: yes
+    shell: |
+      mkdir -p /etc/nginx/tcpconf.d
+  - name: Create main nginx config
+    become: yes
+    shell: |
+      cat <<EOF > /etc/nginx/nginx.conf
+      load_module /usr/lib/nginx/modules/ngx_stream_module.so;
+      include /etc/nginx/tcpconf.d/*;
+      EOF
+  - name: Upload proxy nginx config
+    become: yes
+    copy:
+      src: "{{assets_dir}}/proxy.conf"
+      dest: "/etc/nginx/tcpconf.d/proxy.conf"
+  - name: Restart nginx
+    become: yes
+    shell: service nginx restart
