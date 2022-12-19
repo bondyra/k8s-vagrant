@@ -1,0 +1,13 @@
+events {}
+stream {
+    upstream kubernetes {
+{% for vm in (vms | selectattr("type", "equalto", "master")) %}
+        server {{ vm.ip_address }}:6443;
+{% endfor %}
+    }
+
+    server {
+        listen 6443;
+        proxy_pass kubernetes;
+    }
+}

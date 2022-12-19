@@ -1,0 +1,29 @@
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/etcd \
+  --name {{this_hostname}} \
+  --cert-file=/etc/etcd/api-server.pem \
+  --key-file=/etc/etcd/api-server-key.pem \
+  --peer-cert-file=/etc/etcd/api-server.pem \
+  --peer-key-file=/etc/etcd/api-server-key.pem \
+  --trusted-ca-file=/etc/etcd/ca.pem \
+  --peer-trusted-ca-file=/etc/etcd/ca.pem \
+  --peer-client-cert-auth \
+  --client-cert-auth \
+  --initial-advertise-peer-urls https://{{this_ip_address}}:2380 \
+  --listen-peer-urls https://{{this_ip_address}}:2380 \
+  --listen-client-urls https://{{this_ip_address}}:2379,https://127.0.0.1:2379 \
+  --advertise-client-urls https://{{this_ip_address}}:2379 \
+  --initial-cluster-token etcd-cluster-0 \
+  --initial-cluster {% set comma = joiner(",") %}{% for vm in (vms | selectattr("type", "equalto", "master")) %}{{ comma() }}{{ "%s=https://%s:2380" | format(vm.hostname, vm.ip_address) }}{% endfor %} \
+  --initial-cluster-state new \
+  --data-dir=/var/lib/etcd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

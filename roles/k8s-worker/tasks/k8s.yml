@@ -1,0 +1,62 @@
+- name: Install OS dependencies
+  become: yes
+  script: "{{role_path}}/files/setup_worker.sh"
+
+- name: Render CNI bridge config
+  become: yes
+  template:
+    src: "{{role_path}}/templates/cni-bridge.conf.j2"
+    dest: /etc/cni/net.d/10-bridge.conf
+- name: Upload CNI loopback config
+  become: yes
+  copy:
+    src: "{{role_path}}/files/cni-lo.conf"
+    dest: /etc/cni/net.d/99-loopback.conf
+
+- name: Upload containerd config
+  become: yes
+  copy:
+    src: "{{role_path}}/files/containerd-config.toml"
+    dest: /etc/containerd/config.toml
+- name: Upload containerd service
+  become: yes
+  copy:
+    src: "{{role_path}}/files/containerd.service"
+    dest: /etc/systemd/system/containerd.service
+
+- name: Render kubelet config
+  become: yes
+  template:
+    src: "{{role_path}}/templates/kubelet-config.yaml.j2"
+    dest: /var/lib/kubelet/kubelet-config.yaml
+- name: Upload kubelet service
+  become: yes
+  copy:
+    src: "{{role_path}}/files/kubelet.service"
+    dest: /etc/systemd/system/kubelet.service
+
+- name: Upload kube proxy config
+  become: yes
+  copy:
+    src: "{{role_path}}/files/kube-proxy-config.yaml"
+    dest: /var/lib/kube-proxy/kube-proxy-config.yaml
+- name: Upload kube proxy service
+  become: yes
+  copy:
+    src: "{{role_path}}/files/kube-proxy.service"
+    dest: /etc/systemd/system/kube-proxy.service
+
+- name: Render routing script
+  template:
+    src: "{{role_path}}/templates/configure_routing.sh.j2"
+    dest: ~/configure_routing.sh
+- name: Setup routes
+  become: yes
+  shell: bash configure_routing.sh
+
+- name: Start the worker services
+  become: yes
+  shell: |
+    systemctl daemon-reload
+    systemctl enable containerd kubelet kube-proxy
+    systemctl start containerd kubelet kube-proxy

@@ -1,0 +1,20 @@
+- name: Upload CA cert
+  copy:
+    src: ".pki/ca.pem"
+    dest: ~/
+- name: Upload kubelet cert
+  copy:
+    src: ".pki/{{this_hostname}}.pem"
+    dest: ~/cert.pem
+- name: Upload kubelet key
+  copy:
+    src: ".pki/{{this_hostname}}-key.pem"
+    dest: ~/cert-key.pem
+- name: Upload kubelet kubeconfig
+  copy:
+    src: ".pki/{{this_hostname}}.kubeconfig"
+    dest: ~/worker.kubeconfig
+- name: Upload kube-proxy kubeconfig
+  copy:
+    src: ".pki/kube-proxy.kubeconfig"
+    dest: ~/

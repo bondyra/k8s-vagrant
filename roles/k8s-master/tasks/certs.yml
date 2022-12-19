@@ -1,0 +1,36 @@
+- name: Upload CA cert
+  copy:
+    src: ".pki/ca.pem"
+    dest: ~/
+- name: Upload CA key
+  copy:
+    src: ".pki/ca-key.pem"
+    dest: ~/
+- name: Upload API server cert
+  copy:
+    src: ".pki/api-server.pem"
+    dest: ~/
+- name: Upload API server key
+  copy:
+    src: ".pki/api-server-key.pem"
+    dest: ~/
+- name: Upload service account cert
+  copy:
+    src: ".pki/service-account.pem"
+    dest: ~/
+- name: Upload service account key
+  copy:
+    src: ".pki/service-account-key.pem"
+    dest: ~/
+- name: Upload admin kubeconfig
+  copy:
+    src: ".pki/admin.kubeconfig"
+    dest: ~/
+- name: Upload controller manager kubeconfig
+  copy:
+    src: ".pki/kube-controller-manager.kubeconfig"
+    dest: ~/
+- name: Upload scheduler kubeconfig
+  copy:
+    src: ".pki/kube-scheduler.kubeconfig"
+    dest: ~/

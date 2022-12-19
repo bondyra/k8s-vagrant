@@ -1,0 +1,4 @@
+- include_role:
+    name: k8s-base
+- include_tasks: certs.yml
+- include_tasks: k8s.yml

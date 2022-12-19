@@ -1,0 +1,27 @@
+- name: APT
+  become: yes
+  apt:
+    update_cache: true
+    name: nginx
+    state: present
+
+- name: Prepare directories
+  become: yes
+  shell: |
+    mkdir -p /etc/nginx/tcpconf.d
+
+- name: Upload main nginx config
+  become: yes
+  copy:
+    src: "{{ role_path }}//files/nginx.conf"
+    dest: /etc/nginx/nginx.conf
+
+- name: Render proxy nginx config
+  become: yes
+  template:
+    src: "{{ role_path }}//templates/proxy.conf.j2"
+    dest: /etc/nginx/tcpconf.d/proxy.conf
+
+- name: Restart nginx
+  become: yes
+  shell: service nginx restart

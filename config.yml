@@ -1,0 +1,34 @@
+vagrant:  # vagrant specific config
+  vm_box: bento/ubuntu-20.04  # OS of VMs (nodes). **Do not change** from ubuntu 20.04 unless you have some free time. I tried Ubuntu 22.04 but stumbled upon cgroupv2 issue, probably updating k8s to 1.22+ would help here.
+local:
+  ssh_pub_key_path: ~/.ssh/id_rsa.pub  # Path to your local SSH pub key used to talk to VMs with SSH
+  kubeconfig_context_name: k8s-vagrant-khtw  # Context name to be used in your local kubeconfig
+kubernetes:
+  cluster_cidr: 10.200.0.0/16  # K8S setting, CIDR of the whole cluster. Theoretically it should encompass all `pod_cidr` values (but cluster will work even if it doesn't)
+  service_cluster_ip_range: 10.32.0.0/24  # CIDR used to provision cluster IP services. Must not overlap with cluster CIDR
+  aescbc_encryption_key: fCIQKWiztfqaQQfssNYQHkI0ZyxXC4+jl2n86jQLz6U=  # Key to encrypt service account tokens. TODO: safer configuration way required
+vms:
+  # Hostname and ip address for nginx TCP proxy (separate VM) which load balances traffic to API servers on master nodes
+  # Specify only one proxy, because a) - current implementation ignores other, b) - imho there is no gain in more proxies
+  - hostname: khtw-master-proxy
+    ip_address: 192.168.60.10
+    type: proxy
+
+  # VMs that will be k8s master nodes
+  - hostname: khtw-master-0
+    ip_address: 192.168.60.20
+    type: master
+  - hostname: khtw-master-1
+    ip_address: 192.168.60.21
+    type: master
+
+  # VMs that will be k8s worker nodes. Besides hostname & ip, you must specify pod_cidr - a pod subnet which should be a cluster CIDR subnet, pod CIDRs must not overlap!
+  # List of hostnames and IP addresses of k8s worker nodes to provision
+  - hostname: khtw-worker-0
+    ip_address: 192.168.60.30
+    pod_cidr: "10.200.10.0/24"
+    type: worker
+  - hostname: khtw-worker-1
+    ip_address: 192.168.60.31
+    pod_cidr: 10.200.11.0/24
+    type: worker

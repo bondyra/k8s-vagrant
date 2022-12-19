@@ -1,0 +1,8 @@
+---
+- name: Render hosts file
+  template:
+    src: "{{ role_path }}/templates/hosts.j2"
+    dest: rendered_hosts
+- name: Append hosts to etc hosts
+  become: yes
+  shell: cat rendered_hosts >> /etc/hosts

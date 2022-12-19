@@ -1,0 +1,40 @@
+[Unit]
+Description=Kubernetes API Server
+Documentation=https://github.com/kubernetes/kubernetes
+
+[Service]
+ExecStart=/usr/local/bin/kube-apiserver \
+  --advertise-address={{this_ip_address}} \
+  --allow-privileged=true \
+  --apiserver-count=3 \
+  --audit-log-maxage=30 \
+  --audit-log-maxbackup=3 \
+  --audit-log-maxsize=100 \
+  --audit-log-path=/var/log/audit.log \
+  --authorization-mode=Node,RBAC \
+  --bind-address=0.0.0.0 \
+  --client-ca-file=/var/lib/kubernetes/ca.pem \
+  --enable-admission-plugins=NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \
+  --etcd-cafile=/var/lib/kubernetes/ca.pem \
+  --etcd-certfile=/var/lib/kubernetes/api-server.pem \
+  --etcd-keyfile=/var/lib/kubernetes/api-server-key.pem \
+  --etcd-servers={% set comma = joiner(",") %}{% for vm in (vms | selectattr("type", "equalto", "master")) %}{{ comma() }}{{ "https://%s:2379" | format(vm.ip_address) }}{% endfor %} \
+  --event-ttl=1h \
+  --encryption-provider-config=/var/lib/kubernetes/encryption-config.yaml \
+  --kubelet-certificate-authority=/var/lib/kubernetes/ca.pem \
+  --kubelet-client-certificate=/var/lib/kubernetes/api-server.pem \
+  --kubelet-client-key=/var/lib/kubernetes/api-server-key.pem \
+  --runtime-config='api/all=true' \
+  --service-account-key-file=/var/lib/kubernetes/service-account.pem \
+  --service-account-signing-key-file=/var/lib/kubernetes/service-account-key.pem \
+  --service-account-issuer=https://{{vms | selectattr("type", "equalto", "proxy") | map(attribute="ip_address") | first}}:6443 \
+  --service-cluster-ip-range={{kubernetes.service_cluster_ip_range}} \
+  --service-node-port-range=30000-32767 \
+  --tls-cert-file=/var/lib/kubernetes/api-server.pem \
+  --tls-private-key-file=/var/lib/kubernetes/api-server-key.pem \
+  --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

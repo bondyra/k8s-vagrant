@@ -1,4 +1,5 @@
-.assets*
+.pki*
 .vagrant*
 .ansible*
-
+.vagrant_hosts
+.vm_hostnames_to_append_to_etc_hosts

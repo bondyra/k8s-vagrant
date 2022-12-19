@@ -1,0 +1,3 @@
+{% for vm in (vms | selectattr("type", "equalto", "worker")) %}
+[ "{{this_pod_cidr}}" != "{{vm.pod_cidr}}" ] && ip r add {{vm.pod_cidr}} via {{vm.ip_address}} || true
+{% endfor %}

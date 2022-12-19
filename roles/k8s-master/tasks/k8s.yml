@@ -1,0 +1,70 @@
+- name: Setup kubernetes
+  become: yes
+  script: "{{role_path}}/files/setup_kubernetes.sh"
+
+- name: Render encryption config
+  become: yes
+  template:
+    src: "{{role_path}}/templates/encryption-config.yaml.j2"
+    dest: /var/lib/kubernetes/encryption-config.yaml
+
+- name: Render api server service
+  become: yes
+  template:
+    src: "{{role_path}}/templates/kube-apiserver.service.j2"
+    dest: /etc/systemd/system/kube-apiserver.service
+
+- name: Upload controller manager service
+  become: yes
+  template:
+    src: "{{role_path}}/templates/kube-controller-manager.service.j2"
+    dest: /etc/systemd/system/kube-controller-manager.service
+
+- name: Upload scheduler config
+  become: yes
+  copy:
+    src: "{{role_path}}/files/kube-scheduler.yaml"
+    dest: /etc/kubernetes/config/kube-scheduler.yaml
+- name: Upload scheduler service
+  become: yes
+  copy:
+    src: "{{role_path}}/files/kube-scheduler.service"
+    dest: /etc/systemd/system/kube-scheduler.service
+
+- name: Start k8s services
+  become: yes
+  shell: |
+    systemctl daemon-reload
+    systemctl enable kube-apiserver kube-controller-manager kube-scheduler
+    systemctl start kube-apiserver kube-controller-manager kube-scheduler
+- name: Pause for 10 seconds to start things up
+  pause:
+    seconds: 10
+
+- name: Upload YAML with api server to kubelet cluster role
+  copy:
+    src: "{{role_path}}/files/api-server-to-kubelet.yaml"
+    dest: ~/
+- name: Install api server to kubelet cluster role
+  run_once: true
+  become: yes
+  shell: |
+    kubectl apply --kubeconfig admin.kubeconfig -f api-server-to-kubelet.yaml
+  register: result  # early applies might occasionally fail
+  until: result.rc == 0
+  retries: 3
+  delay: 10
+
+- name: Upload CoreDNS yaml
+  copy:
+    src: "{{role_path}}/files/coredns.yaml"
+    dest: ~/
+- name: Install CoreDNS
+  run_once: true
+  become: yes
+  shell: |
+    kubectl apply --kubeconfig admin.kubeconfig  -f coredns.yaml
+  register: result  # early applies might occasionally fail
+  until: result.rc == 0
+  retries: 3
+  delay: 10
