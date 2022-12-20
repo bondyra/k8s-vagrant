@@ -26,6 +26,7 @@ This will do following things:
 - Create VirtualBox machines
 - Upload your local SSH pub key (path configurable) to VirtualBox machines
 - Run ansible playbooks
+
 Everything should succeed in 8 minutes (tested on my local machine, AMD Ryzen 9 5900HS/32GB RAM/Win10/WSL2).
 No errors nor warnings are expected.
 
@@ -59,7 +60,7 @@ Address: 10.32.0.1
 Check external DNS:
 ```
 $ kubectl exec multitool -- nslookup radiomaryja.pl
-(some evil but accurate response)
+(some reasonable but evil response)
 ```
 Curl example deployment service (*do it multiple times if you have multiple nodes to check inter-node connectivity*):
 ```
@@ -81,6 +82,7 @@ This is a good value
 ```
 
 If any command returns something else, there is something wrong (no shit sherlock).
+
 Also, Kubernetes the Hard Way contains additional smoke test instructions.
 
 # Tear down
