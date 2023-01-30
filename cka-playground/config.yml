@@ -1,23 +1,18 @@
 vagrant:  # vagrant specific config
-  vm_box: bento/ubuntu-22.04  # OS of VMs (nodes)
+  vm_box: bento/ubuntu-22.04  # OS of VMs (nodes) - do not change unless you know what you're doing
 local:
   ssh_pub_key_path: ~/.ssh/id_rsa.pub  # Path to your local SSH pub key used to talk to VMs with SSH
-  kubeconfig_context_name: k8s-vagrant-kubeadm  # Context name to be used in your local kubeconfig
 kubernetes:
   pod_network_cidr: 10.244.0.0/24
 
 master:
   hostname: khtw-master-0
   ip_address: 192.168.60.20
-  cpu: 2
-  memory: 2048
+  cpu: 4
+  memory: 6000
 
 workers:
 - hostname: khtw-worker-0
   ip_address: 192.168.60.30
   cpu: 1
-  memory: 2048
-- hostname: khtw-worker-1
-  ip_address: 192.168.60.31
-  cpu: 1
-  memory: 2048
+  memory: 3000

@@ -6,8 +6,7 @@
 - yq (tested on version 4.30.5)
 - jq (tested on version 1.6)
 
-Idle cluster resource requirements formula: `2GB + number_of_workers * 1GB`, `2 CPU + number_of_workers * 1 CPU`
-So 4 GB RAM and 4 CPUs for 2 worker setup.
+Cluster seems to be stable with 6GB RAM + 4 CPU for master, and 3GB RAM + 1 CPU for each node.
 
 # Configure
 There shouldn't be any hardcoded elements in scripts, you can manage everything using single `config.yml` file. Config contains comments that explain how to use it.
