@@ -1,5 +1,10 @@
 .pki*
 .vagrant*
+.env
+*.kubeconfig
 .ansible*
-.vagrant_hosts
-.vm_hostnames_to_append_to_etc_hosts
+*.vagrant_hosts
+*.vm_hostnames_to_append_to_etc_hosts
+*.ca_cert_hash
+*.join_token
+*.cert_key

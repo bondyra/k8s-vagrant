@@ -1,0 +1,182 @@
+- name: Setup etcd server
+  become: yes
+  script: "{{role_path}}/files/setup_etcd.sh"
+- name: Render etcd service
+  become: yes
+  template:
+    src: "{{role_path}}/templates/etcd.service.j2"
+    dest: /etc/systemd/system/etcd.service
+- name: Start etcd server
+  become: yes
+  shell: |
+    systemctl daemon-reload
+    systemctl enable etcd
+    systemctl start etcd
+- name: Pause for 10 seconds to start things up
+  pause:
+    seconds: 10
+ETCDCTL_API=3 etcdctl member list \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/ca.crt \
+  --cert=/etc/kubernetes/pki/apiserver-etcd-client.crt \
+  --key=/etc/kubernetes/pki/apiserver-etcd-client.key
+
+
+
+{
+  "status": {
+    "conditions": [
+      {
+        "type": "RuntimeReady",
+        "status": true,
+        "reason": "",
+        "message": ""
+      },
+      {
+        "type": "NetworkReady",
+        "status": true,
+        "reason": "",
+        "message": ""
+      }
+    ]
+  },
+  "cniconfig": {
+    "PluginDirs": [
+      "/opt/cni/bin"
+    ],
+    "PluginConfDir": "/etc/cni/net.d",
+    "PluginMaxConfNum": 1,
+    "Prefix": "eth",
+    "Networks": [
+      {
+        "Config": {
+          "Name": "cni-loopback",
+          "CNIVersion": "0.3.1",
+          "Plugins": [
+            {
+              "Network": {
+                "type": "loopback",
+                "ipam": {},
+                "dns": {}
+              },
+              "Source": "{\"type\":\"loopback\"}"
+            }
+          ],
+          "Source": "{\n\"cniVersion\": \"0.3.1\",\n\"name\": \"cni-loopback\",\n\"plugins\": [{\n  \"type\": \"loopback\"\n}]\n}"
+        },
+        "IFName": "lo"
+      },
+      {
+        "Config": {
+          "Name": "bridge",
+          "CNIVersion": "0.4.0",
+          "Plugins": [
+            {
+              "Network": {
+                "cniVersion": "0.4.0",
+                "name": "bridge",
+                "type": "bridge",
+                "ipam": {
+                  "type": "host-local"
+                },
+                "dns": {}
+              },
+              "Source": "{\"bridge\":\"cnio0\",\"cniVersion\":\"0.4.0\",\"ipMasq\":true,\"ipam\":{\"ranges\":[[{\"subnet\":\"10.244.0.0/24\"}]],\"routes\":[{\"dst\":\"0.0.0.0/0\"}],\"type\":\"host-local\"},\"isGateway\":true,\"name\":\"bridge\",\"type\":\"bridge\"}"
+            }
+          ],
+          "Source": "{\"cniVersion\":\"0.4.0\",\"name\":\"bridge\",\"plugins\":[{\"bridge\":\"cnio0\",\"cniVersion\":\"0.4.0\",\"ipMasq\":true,\"ipam\":{\"ranges\":[[{\"subnet\":\"10.244.0.0/24\"}]],\"routes\":[{\"dst\":\"0.0.0.0/0\"}],\"type\":\"host-local\"},\"isGateway\":true,\"name\":\"bridge\",\"type\":\"bridge\"}]}"
+        },
+        "IFName": "eth0"
+      }
+    ]
+  },
+  "config": {
+    "containerd": {
+      "snapshotter": "overlayfs",
+      "defaultRuntimeName": "runc",
+      "runtimes": {
+        "runc": {
+          "runtimeType": "io.containerd.runc.v2",
+          "runtimePath": "",
+          "runtimeEngine": "",
+          "PodAnnotations": null,
+          "ContainerAnnotations": null,
+          "runtimeRoot": "",
+          "options": {
+            "BinaryName": "",
+            "CriuImagePath": "",
+            "CriuPath": "",
+            "CriuWorkPath": "",
+            "IoGid": 0,
+            "IoUid": 0,
+            "NoNewKeyring": false,
+            "NoPivotRoot": false,
+            "Root": "",
+            "ShimCgroup": "",
+            "SystemdCgroup": false
+          },
+          "privileged_without_host_devices": false,
+          "baseRuntimeSpec": "",
+          "cniConfDir": "",
+          "cniMaxConfNum": 0
+        }
+      },
+      "noPivot": false,
+      "disableSnapshotAnnotations": true,
+      "discardUnpackedLayers": false,
+      "ignoreRdtNotEnabledErrors": false
+    },
+    "cni": {
+      "binDir": "/opt/cni/bin",
+      "confDir": "/etc/cni/net.d",
+      "maxConfNum": 1,
+      "confTemplate": "",
+      "ipPref": ""
+    },
+    "registry": {
+      "configPath": "",
+      "mirrors": null,
+      "configs": null,
+      "auths": null,
+      "headers": null
+    },
+    "imageDecryption": {
+      "keyModel": "node"
+    },
+    "disableTCPService": true,
+    "streamServerAddress": "127.0.0.1",
+    "streamServerPort": "0",
+    "streamIdleTimeout": "4h0m0s",
+    "enableSelinux": false,
+    "selinuxCategoryRange": 1024,
+    "sandboxImage": "registry.k8s.io/pause:3.6",
+    "statsCollectPeriod": 10,
+    "systemdCgroup": false,
+    "enableTLSStreaming": false,
+    "x509KeyPairStreaming": {
+      "tlsCertFile": "",
+      "tlsKeyFile": ""
+    },
+    "maxContainerLogSize": 16384,
+    "disableCgroup": false,
+    "disableApparmor": false,
+    "restrictOOMScoreAdj": false,
+    "maxConcurrentDownloads": 3,
+    "disableProcMount": false,
+    "unsetSeccompProfile": "",
+    "tolerateMissingHugetlbController": true,
+    "disableHugetlbController": true,
+    "device_ownership_from_security_context": false,
+    "ignoreImageDefinedVolumes": false,
+    "netnsMountsUnderStateDir": false,
+    "enableUnprivilegedPorts": false,
+    "enableUnprivilegedICMP": false,
+    "containerdRootDir": "/var/lib/containerd",
+    "containerdEndpoint": "/run/containerd/containerd.sock",
+    "rootDir": "/var/lib/containerd/io.containerd.grpc.v1.cri",
+    "stateDir": "/run/containerd/io.containerd.grpc.v1.cri"
+  },
+  "golang": "go1.18.9",
+  "lastCNILoadStatus": "OK",
+  "lastCNILoadStatus.default": "OK"
+}

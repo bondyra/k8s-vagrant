@@ -1,0 +1,59 @@
+- name: Bootstrap nodes
+  hosts: master:workers
+  tasks:
+  - name: Bootstrap node
+    become: yes
+    script: bootstrap_node.sh
+  - name: Supply additional kubelet args
+    become: yes
+    shell: echo "KUBELET_EXTRA_ARGS=--node-ip {{ansible_host}}"  >> /etc/default/kubelet
+
+- name: Init cluster
+  hosts: master
+  tasks:
+  - name: kubeadm init
+    become: yes
+    shell: |
+      kubeadm init --apiserver-advertise-address={{ master.ip_address }} --pod-network-cidr={{kubernetes.pod_network_cidr}} \
+      >> /root/kubeinit.log
+
+  - name: Install CNI
+    become: yes
+    shell: |
+      kubectl --kubeconfig /etc/kubernetes/admin.conf create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+
+  - name: Get join command
+    become: yes
+    shell: kubeadm token create --print-join-command
+    register: join_command_result
+
+  - name: Save join command
+    local_action: 
+      module: copy
+      content: "{{ join_command_result.stdout }}"
+      dest: .join_command.sh
+
+# ---
+
+- name: Join workers
+  hosts: workers
+  tasks:
+  - name: Join worker
+    become: yes
+    script: .join_command.sh
+
+- name: Finish up
+  hosts: master
+  tasks:
+  - name: Remove join command
+    local_action: 
+      module: file
+      path: .join_command.sh
+      state: absent
+
+  - name: Pull admin kubeconfig
+    become: yes
+    fetch:
+      src: /etc/kubernetes/admin.conf
+      dest: "this.kubeconfig"
+      flat: true
