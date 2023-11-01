@@ -20,7 +20,7 @@
   - name: Install CNI
     become: yes
     shell: |
-      kubectl --kubeconfig /etc/kubernetes/admin.conf create -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+      kubectl --kubeconfig /etc/kubernetes/admin.conf create -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
 
   - name: Get join command
     become: yes

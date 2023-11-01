@@ -3,7 +3,7 @@ vagrant:  # vagrant specific config
 local:
   ssh_pub_key_path: ~/.ssh/id_rsa.pub  # Path to your local SSH pub key used to talk to VMs with SSH
 kubernetes:
-  pod_network_cidr: 10.244.0.0/24
+  pod_network_cidr: 10.244.0.0/16
 
 master:
   hostname: khtw-master-0

@@ -14,7 +14,7 @@
     src: "{{role_path}}/templates/kube-apiserver.service.j2"
     dest: /etc/systemd/system/kube-apiserver.service
 
-- name: Upload controller manager service
+- name: Render controller manager service
   become: yes
   template:
     src: "{{role_path}}/templates/kube-controller-manager.service.j2"

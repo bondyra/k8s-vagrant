@@ -28,10 +28,10 @@ mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd
 apt-get update
 apt-get install -y apt-transport-https ca-certificates curl
 mkdir -p /etc/apt/keyrings
-wget -O /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+wget -O /etc/apt/keyrings/kubernetes-archive-keyring.gpg https://dl.k8s.io/apt/doc/apt-key.gpg
 echo "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
 apt-get update
-apt-get install -y kubelet kubeadm kubectl
+apt-get install -y kubelet=1.25.5-00 kubeadm=1.25.5-00 kubectl=1.25.5-00  # deliberately set to outdated versions to excercise cluster upgrades
 apt-mark hold kubelet kubeadm kubectl
 
 # runc

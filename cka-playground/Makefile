@@ -7,7 +7,7 @@ cluster: .vagrant_up .inventory .ansible .env
 destroy: .vagrant_destroy .remove_stuff
 
 .vagrant_up:
-	vagrant upss
+	vagrant up
 
 .inventory:
 	bash ./config_to_ansible_inventory.sh > .vagrant_hosts
